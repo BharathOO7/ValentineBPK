@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Surprise For You</title>
+    
+    <!-- React & Tailwind -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Quicksand:wght@300;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Quicksand', sans-serif; overflow-x: hidden; }
+        .font-hand { font-family: 'Dancing Script', cursive; }
+        .font-serif { font-family: 'Playfair Display', serif; }
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(236, 72, 153, 0.15);
+        }
+
+        /* Heart Floating Animation */
+        .bg-heart {
+            position: absolute;
+            color: rgba(244, 63, 94, 0.15);
+            animation: floatUp linear infinite;
+            z-index: 0;
+            user-select: none;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+        }
+
+        /* Reveal Animation */
+        .reveal-content {
+            animation: expandOpen 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes expandOpen {
+            0% { transform: scale(0.9); opacity: 0; max-height: 0; }
+            100% { transform: scale(1); opacity: 1; max-height: 1000px; }
+        }
+
+        /* Pulse */
+        .heart-pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        /* Animations */
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        
+        @keyframes heartbeat { 0% { transform: scale(1); } 15% { transform: scale(1.15); } 30% { transform: scale(1); } 45% { transform: scale(1.15); } 60% { transform: scale(1); } }
+        .animate-heartbeat { animation: heartbeat 2s infinite; }
+
+        @keyframes melt { 0% { border-radius: 10px; } 50% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; } 100% { border-radius: 10px; } }
+        .animate-melt { animation: melt 8s ease-in-out infinite; }
+
+        /* Custom Shapes */
+        .shape-blob { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+        .shape-tear { border-radius: 0 50% 50% 50%; transform: rotate(45deg); }
+        
+        /* Glass */
+        .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.5); }
+        .glass-dark { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const THEMES = {
+            rose: { id: 'rose', name: 'Rose Day', icon: '🌹', bg: 'bg-gradient-to-br from-red-100 via-pink-200 to-red-100', text: 'text-red-800' },
+            propose: { id: 'propose', name: 'Propose Day', icon: '💍', bg: 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900', text: 'text-amber-200' },
+            chocolate: { id: 'chocolate', name: 'Chocolate Day', icon: '🍫', bg: 'bg-[#3E2723]', text: 'text-[#D7CCC8]' },
+            teddy: { id: 'teddy', name: 'Teddy Day', icon: '🧸', bg: 'bg-gradient-to-tr from-pink-100 to-blue-100', text: 'text-purple-600' },
+            promise: { id: 'promise', name: 'Promise Day', icon: '🤞', bg: 'bg-gradient-to-r from-blue-50 to-indigo-50', text: 'text-indigo-800' },
+            hug: { id: 'hug', name: 'Hug Day', icon: '💕', bg: 'bg-orange-50', text: 'text-orange-800' },
+            kiss: { id: 'kiss', name: 'Kiss Day', icon: '💋', bg: 'bg-red-50', text: 'text-red-600' },
+            valentine: { id: 'valentine', name: 'Valentine\'s Day', icon: '❤️', bg: 'bg-pink-500', text: 'text-white' }
+        };
+
+        const BackgroundParticles = () => {
+            const [particles, setParticles] = useState([]);
+            useEffect(() => {
+                setParticles(Array.from({ length: 20 }).map((_, i) => ({
+                    id: i,
+                    left: Math.random() * 100,
+                    size: Math.random() * 40 + 10,
+                    duration: Math.random() * 10 + 10,
+                    delay: Math.random() * 5
+                })));
+            }, []);
+
+            return (
+                <div className="fixed inset-0 pointer-events-none overflow-hidden h-screen w-screen">
+                    {particles.map(p => (
+                        <div key={p.id} className="bg-heart" style={{
+                            left: `${p.left}%`,
+                            fontSize: `${p.size}px`,
+                            animationDuration: `${p.duration}s`,
+                            animationDelay: `${p.delay}s`
+                        }}>❤️</div>
+                    ))}
+                </div>
+            );
+        };
+
+        // --- Music Component ---
+        const MusicPlayer = ({ videoId, playTrigger }) => {
+            const playerRef = useRef(null);
+
+            useEffect(() => {
+                if (playTrigger && playerRef.current) {
+                    playerRef.current.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                }
+            }, [playTrigger]);
+
+            if (!videoId) return null;
+
+            return (
+                <div className="fixed bottom-4 right-4 z-50 opacity-50 hover:opacity-100 transition-opacity">
+                    <iframe 
+                        ref={playerRef}
+                        className="hidden"
+                        src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&controls=0&loop=1&playlist=${videoId}`}
+                        allow="autoplay"
+                    />
+                    <div className="w-10 h-10 bg-white/20 backdrop-blur rounded-full flex items-center justify-center animate-spin-slow">
+                        <i data-lucide="music" className="w-5 h-5"></i>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- UNIQUE DAY RENDERERS ---
+
+        // 1. Rose Day (Elegant, Floating Petals)
+        const RoseDay = ({ data }) => {
+    const [isOpened, setIsOpened] = useState(false);
+
+    return (
+        <div className={`min-h-screen transition-colors duration-1000 flex flex-col items-center justify-center p-6 relative overflow-hidden ${isOpened ? 'bg-[#fff0f3]' : 'bg-[#ffe4e6]'}`}>
+            
+            {/* 1. PETAL BLIZZARD (Only shows after opening) */}
+            {isOpened && (
+                <div className="absolute inset-0 pointer-events-none z-50">
+                    {[...Array(30)].map((_, i) => (
+                        <div key={i} className="absolute animate-petal-fall text-2xl" style={{
+                            left: `${Math.random() * 100}%`,
+                            top: `-10%`,
+                            animationDelay: `${Math.random() * 5}s`,
+                            animationDuration: `${4 + Math.random() * 4}s`,
+                            opacity: 0.6
+                        }}>🌸</div>
+                    ))}
+                </div>
+            )}
+
+            {/* 2. BACKGROUND GLOWS */}
+            <div className="absolute inset-0 z-0">
+                <div className={`absolute inset-0 bg-gradient-to-b from-rose-100 to-transparent transition-opacity duration-1000 ${isOpened ? 'opacity-100' : 'opacity-30'}`}></div>
+            </div>
+
+            {/* 3. THE INTERACTIVE REVEAL */}
+            <div className="relative z-10 w-full max-w-md flex flex-col items-center">
+                
+                {!isOpened ? (
+                    /* THE GIFT BOX (Before Opening) */
+                    <button 
+                        onClick={() => setIsOpened(true)}
+                        className="group relative animate-bounce-slow"
+                    >
+                        <div className="absolute -inset-4 bg-pink-400 rounded-full blur-2xl opacity-20 group-hover:opacity-50 transition-opacity"></div>
+                        <span className="text-[120px] cursor-pointer hover:scale-110 transition-transform block">🎁</span>
+                        <p className="mt-4 font-serif text-rose-500 font-bold tracking-widest animate-pulse uppercase text-sm">Tap to open your gift</p>
+                    </button>
+                ) : (
+                    /* THE ROSE PRESENTATION (After Opening) */
+                    <div className="flex flex-col items-center w-full">
+                        <div className="relative h-64 w-full flex items-center justify-center mb-8">
+                            
+                            {/* Her Emoji (The Receiver) */}
+                            <div className="relative animate-fade-in-up">
+                                <span className="text-[120px] drop-shadow-2xl">🐱</span>
+                                
+                                {/* THE FLYING ROSE */}
+                                <div className="absolute -top-10 -right-20 text-7xl animate-rose-delivery">
+                                    🌹
+                                </div>
+
+                                {/* Blushing Hearts around her */}
+                                <div className="absolute -top-4 -left-4 text-3xl animate-ping">💖</div>
+                            </div>
+                        </div>
+
+                        {/* STORYBOOK CONTENT */}
+                        <div className="animate-fade-in-scale text-center space-y-6">
+                            <div className="inline-block px-6 py-2 bg-white rounded-full shadow-sm border border-rose-100">
+                                <span className="font-serif text-rose-500 font-black text-xs tracking-[0.3em] uppercase">Happy Rose Day</span>
+                            </div>
+
+                            <h1 className="font-serif text-5xl text-gray-800 italic leading-tight">
+                                A Petal for <br/> 
+                                <span className="text-rose-500">Every Heartbeat.</span>
+                            </h1>
+
+                            <div className="bg-white/40 backdrop-blur-md p-8 rounded-[40px] border border-white/60 shadow-xl relative">
+                                {/* Decorative Rose Corners */}
+                                <span className="absolute -top-3 -left-3 text-2xl">✨</span>
+                                
+                                <p className="font-hand text-4xl text-rose-700 italic">
+                                    "{data.message || "Just like this rose, my love for you blooms more beautifully every single day."}"
+                                </p>
+                            </div>
+
+                            {/* Partner Image (Tiny Polaroid Style) */}
+                            {data.image && (
+                                <div className="mt-6 w-24 h-24 mx-auto p-2 bg-white shadow-lg -rotate-3 border-b-8 border-rose-50">
+                                    <img src={data.image} className="w-full h-full object-cover" alt="My Flower" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@1,900&display=swap');
+                
+                .font-hand { font-family: 'Dancing Script', cursive; }
+                .font-serif { font-family: 'Playfair Display', serif; }
+
+                @keyframes petal-fall {
+                    0% { transform: translateY(0) rotate(0deg) translateX(0); opacity: 0; }
+                    10% { opacity: 1; }
+                    90% { opacity: 1; }
+                    100% { transform: translateY(100vh) rotate(720deg) translateX(50px); opacity: 0; }
+                }
+
+                @keyframes rose-delivery {
+                    0% { transform: translate(200px, -100px) rotate(-45deg) scale(0); opacity: 0; }
+                    50% { transform: translate(0, 0) rotate(0deg) scale(1.5); opacity: 1; }
+                    100% { transform: translate(-30px, 20px) rotate(-15deg) scale(1.1); opacity: 1; }
+                }
+
+                @keyframes fade-in-up {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+
+                @keyframes fade-in-scale {
+                    from { opacity: 0; transform: scale(0.9); }
+                    to { opacity: 1; transform: scale(1); }
+                }
+
+                @keyframes bounce-slow {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-20px); }
+                }
+
+                .animate-petal-fall { animation: petal-fall linear infinite; }
+                .animate-rose-delivery { animation: rose-delivery 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+                .animate-fade-in-up { animation: fade-in-up 1s ease-out forwards; }
+                .animate-fade-in-scale { animation: fade-in-scale 1s ease-out 0.5s forwards; opacity: 0; }
+                .animate-bounce-slow { animation: bounce-slow 3s ease-in-out infinite; }
+            `}</style>
+        </div>
+    );
+};
+
+        // 2. Propose Day (Dark, Premium, Ring Box)
+        const ProposeDay = ({ data }) => {
+    return (
+        <div className="min-h-screen bg-[#0d0d1a] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            
+            {/* 1. MAGICAL ATMOSPHERE */}
+            <div className="absolute inset-0 z-0">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#1a1a3a_0%,#050510_100%)]"></div>
+                
+                {/* Rising Heart Particles (Instead of just stars) */}
+                {[...Array(20)].map((_, i) => (
+                    <div key={i} className="absolute animate-float-rise opacity-30 text-rose-500" style={{
+                        left: `${Math.random() * 100}%`,
+                        bottom: `-10%`,
+                        fontSize: `${Math.random() * 20 + 10}px`,
+                        animationDelay: `${Math.random() * 7}s`,
+                        animationDuration: `${10 + Math.random() * 10}s`
+                    }}>❤️</div>
+                ))}
+                
+                {/* Aurora Glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[60%] bg-rose-600/10 blur-[120px] rotate-12"></div>
+            </div>
+
+            {/* 2. THE TIGER & CAT INTERACTION */}
+            <div className="relative z-10 w-full max-w-lg">
+                <div className="flex justify-center items-end gap-2 mb-8">
+                    {/* TIGER: The Proposer */}
+                    <div className="relative group">
+                        <div className="absolute -top-16 left-0 animate-bounce">
+                           <span className="text-4xl">💍</span>
+                        </div>
+                        <span className="text-[110px] drop-shadow-2xl filter brightness-110">🐯</span>
+                    </div>
+
+                    {/* THE CONNECTION: Pulsing Heart */}
+                    <div className="pb-10">
+                        <div className="text-4xl animate-pulse-fast text-rose-500">❤️</div>
+                    </div>
+
+                    {/* CAT: The Better Half */}
+                    <div className="relative animate-sway">
+                        <div className="absolute -top-12 right-0">
+                           <span className="text-4xl animate-ping opacity-75">✨</span>
+                        </div>
+                        <span className="text-[110px] drop-shadow-2xl">🐱</span>
+                        {/* Blushing blush */}
+                        <div className="absolute bottom-[35%] left-1/2 -translate-x-1/2 flex gap-8">
+                            <div className="w-5 h-2 bg-rose-400/50 rounded-full blur-[2px]"></div>
+                            <div className="w-5 h-2 bg-rose-400/50 rounded-full blur-[2px]"></div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. THE "BETTER HALF" REVEAL CARD */}
+                <div className="relative animate-reveal-up">
+                    {/* The Golden Frame */}
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-400 to-rose-500 rounded-[40px] opacity-30 blur-md"></div>
+                    
+                    <div className="relative bg-black/40 backdrop-blur-2xl border border-white/10 p-10 rounded-[40px] shadow-2xl overflow-hidden">
+                        
+                        {/* Partner's Photo - Styled like a locket */}
+                        {data.image && (
+                            <div className="relative w-28 h-28 mx-auto mb-8">
+                                <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse"></div>
+                                <div className="relative w-full h-full rounded-full border-2 border-white/80 p-1 overflow-hidden shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                                    <img src={data.image} className="w-full h-full object-cover rounded-full" alt="Better Half" />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="text-center space-y-6">
+                            <div className="space-y-1">
+                                <span className="text-amber-400 font-bold tracking-[0.4em] text-[10px] uppercase">A Promise for Life</span>
+                                <h1 className="font-serif text-4xl text-white font-black italic">To My Better Half</h1>
+                            </div>
+
+                            <div className="h-px w-16 bg-gradient-to-r from-transparent via-rose-500 to-transparent mx-auto"></div>
+
+                            {/* THE MAIN TEXT */}
+                            <p className="font-hand text-3xl md:text-4xl text-rose-100 leading-snug drop-shadow-lg">
+                                {data.message || "I love you, will you be my better half?"}
+                            </p>
+
+                            <div className="pt-4 animate-bounce">
+                                <span className="inline-block px-6 py-2 rounded-full border border-rose-500/50 text-rose-300 text-xs font-bold tracking-widest uppercase">
+                                    Forever Starts Here
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@1,800&display=swap');
+
+                .font-hand { font-family: 'Dancing Script', cursive; }
+                .font-serif { font-family: 'Playfair Display', serif; }
+
+                @keyframes float-rise {
+                    0% { transform: translateY(0) scale(1); opacity: 0; }
+                    20% { opacity: 0.4; }
+                    80% { opacity: 0.4; }
+                    100% { transform: translateY(-100vh) scale(1.5); opacity: 0; }
+                }
+
+                @keyframes sway {
+                    0%, 100% { transform: rotate(-3deg) translateX(-5px); }
+                    50% { transform: rotate(3deg) translateX(5px); }
+                }
+
+                @keyframes reveal-up {
+                    from { transform: translateY(100px); opacity: 0; filter: blur(10px); }
+                    to { transform: translateY(0); opacity: 1; filter: blur(0); }
+                }
+
+                @keyframes pulse-fast {
+                    0%, 100% { transform: scale(1); opacity: 1; }
+                    50% { transform: scale(1.3); opacity: 0.7; }
+                }
+
+                .animate-float-rise { animation: float-rise linear infinite; }
+                .animate-sway { animation: sway 4s ease-in-out infinite; }
+                .animate-reveal-up { animation: reveal-up 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+                .animate-pulse-fast { animation: pulse-fast 1.2s ease-in-out infinite; }
+
+            `}</style>
+        </div>
+    );
+};
+
+        // 3. Chocolate Day (Melted drips)
+        const ChocolateDay = ({ data }) => {
+    const [isUnwrapped, setIsUnwrapped] = useState(false);
+
+    return (
+        <div className={`min-h-screen transition-colors duration-1000 flex flex-col items-center justify-center p-6 relative overflow-hidden ${isUnwrapped ? 'bg-[#2d0f0f]' : 'bg-[#1a0505]'}`}>
+            
+            {/* 1. THE MOLTEN BACKGROUND */}
+            <div className="absolute inset-0 z-0">
+                {isUnwrapped ? (
+                    // Molten Chocolate Swirls
+                    <>
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#4a1c1c_0%,#1a0505_100%)]"></div>
+                        <div className="absolute top-[-20%] left-[-10%] w-full h-full bg-[#3d1414] rounded-[30%_70%_70%_30%/30%_30%_70%_70%] blur-[100px] animate-melt-flow opacity-60"></div>
+                        <div className="absolute bottom-[-20%] right-[-10%] w-full h-full bg-[#5c1a1a] rounded-[70%_30%_30%_70%/70%_70%_30%_30%] blur-[100px] animate-melt-flow-reverse opacity-40"></div>
+                    </>
+                ) : (
+                    <div className="absolute inset-0 bg-[#1a0505]"></div>
+                )}
+                
+                {/* Floating Cocoa Beans & Hearts */}
+                {isUnwrapped && [...Array(15)].map((_, i) => (
+                    <div key={i} className="absolute animate-float-slow text-2xl opacity-30" style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        animationDelay: `${Math.random() * 5}s`
+                    }}>🤎</div>
+                ))}
+            </div>
+
+            {/* 2. THE INTERACTIVE CHOCOLATE BAR */}
+            <div className="relative z-10 w-full max-w-md flex flex-col items-center">
+                
+                {!isUnwrapped ? (
+                    /* THE WRAPPED BAR */
+                    <div 
+                        onClick={() => setIsUnwrapped(true)}
+                        className="cursor-pointer group relative"
+                    >
+                        <div className="absolute -inset-4 bg-amber-500/20 blur-2xl group-hover:bg-amber-500/40 transition-all"></div>
+                        
+                        {/* Wrapper Design */}
+                        <div className="w-64 h-96 bg-gradient-to-br from-red-700 via-red-800 to-red-950 rounded-lg shadow-2xl border-2 border-amber-600/30 flex flex-col items-center justify-between p-6 overflow-hidden relative">
+                            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                            <div className="w-full h-12 border-y border-amber-500/50 flex items-center justify-center">
+                                <span className="text-amber-500 tracking-[0.3em] text-[10px] font-bold">PREMIUM COCOA</span>
+                            </div>
+                            <div className="text-center">
+                                <span className="text-5xl mb-2 block">🍫</span>
+                                <h2 className="text-amber-500 font-serif italic text-2xl">Sweetest Love</h2>
+                            </div>
+                            <div className="text-amber-500/50 text-[10px] animate-pulse">TAP TO UNWRAP</div>
+                        </div>
+                    </div>
+                ) : (
+                    /* THE MELTED REVEAL */
+                    <div className="flex flex-col items-center w-full animate-reveal-content">
+                        
+                        <div className="relative w-64 h-64 mb-10">
+                            {/* The Heart "Melting" into the Photo */}
+                            <div className="absolute inset-0 bg-rose-600 rounded-full blur-3xl opacity-40 animate-pulse"></div>
+                            
+                            <div className="relative w-full h-full p-4">
+                                <div className="w-full h-full rounded-[45%_45%_50%_50%/40%_40%_60%_60%] bg-[#3d1414] overflow-hidden border-4 border-amber-900 shadow-2xl animate-morph-heart">
+                                    {data.image ? (
+                                        <img src={data.image} className="w-full h-full object-cover mix-blend-overlay opacity-80" alt="Us" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center">
+                                            <span className="text-7xl">🤎</span>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Drip Effects */}
+                                <div className="absolute bottom-4 left-1/4 w-4 h-12 bg-[#3d1414] rounded-full animate-drip"></div>
+                                <div className="absolute bottom-0 right-1/3 w-3 h-8 bg-[#3d1414] rounded-full animate-drip [animation-delay:0.5s]"></div>
+                            </div>
+
+                            {/* Emojis floating around the reveal */}
+                            <span className="absolute -top-4 -right-4 text-5xl animate-bounce">🐱</span>
+                            <span className="absolute -bottom-4 -left-4 text-5xl animate-bounce [animation-delay:0.3s]">🐯</span>
+                        </div>
+
+                        {/* MESSAGE SECTION */}
+                        <div className="text-center space-y-6">
+                            <h1 className="font-serif text-5xl text-white italic">
+                                Melt My <span className="text-amber-500">Heart.</span>
+                            </h1>
+                            
+                            <div className="bg-[#1a0505]/60 backdrop-blur-md p-8 rounded-[30px] border border-amber-900/30 shadow-2xl relative">
+                                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-2xl">✨</span>
+                                <p className="font-hand text-3xl md:text-4xl text-amber-100/90 leading-snug">
+                                    "{data.message || "You’re sweeter than any chocolate, and you melt my heart every single day."}"
+                                </p>
+                            </div>
+
+                            <div className="flex justify-center gap-4 opacity-40">
+                                <div className="h-px w-12 bg-amber-500 self-center"></div>
+                                <span className="text-amber-500 text-xs tracking-widest uppercase">Feb 9, 2026</span>
+                                <div className="h-px w-12 bg-amber-500 self-center"></div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@1,900&display=swap');
+                .font-hand { font-family: 'Dancing Script', cursive; }
+                .font-serif { font-family: 'Playfair Display', serif; }
+
+                @keyframes melt-flow {
+                    0%, 100% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; transform: rotate(0deg) scale(1); }
+                    50% { border-radius: 50%; transform: rotate(10deg) scale(1.1); }
+                }
+
+                @keyframes melt-flow-reverse {
+                    0%, 100% { border-radius: 70% 30% 30% 70% / 70% 70% 30% 30%; transform: rotate(0deg) scale(1.1); }
+                    50% { border-radius: 50%; transform: rotate(-10deg) scale(1); }
+                }
+
+                @keyframes morph-heart {
+                    0%, 100% { border-radius: 45% 45% 50% 50% / 40% 40% 60% 60%; }
+                    50% { border-radius: 40% 40% 55% 55% / 35% 35% 65% 65%; }
+                }
+
+                @keyframes drip {
+                    0% { height: 0; opacity: 1; transform: translateY(0); }
+                    100% { height: 40px; opacity: 0; transform: translateY(20px); }
+                }
+
+                @keyframes reveal-content {
+                    from { opacity: 0; transform: translateY(30px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+
+                .animate-melt-flow { animation: melt-flow 15s ease-in-out infinite; }
+                .animate-melt-flow-reverse { animation: melt-flow-reverse 12s ease-in-out infinite; }
+                .animate-morph-heart { animation: morph-heart 4s ease-in-out infinite; }
+                .animate-drip { animation: drip 2s ease-in infinite; }
+                .animate-reveal-content { animation: reveal-content 1.2s ease-out forwards; }
+                
+                @keyframes float-slow {
+                    0%, 100% { transform: translateY(0) rotate(0deg); }
+                    50% { transform: translateY(-20px) rotate(15deg); }
+                }
+            `}</style>
+        </div>
+    );
+};
+
+        // 4. Teddy Day (Soft, Plush)
+        const TeddyDay = ({ data }) => {
+            return (
+                <div className="min-h-screen bg-[#FFF0F3] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+                    
+                    {/* 1. SOFT PINK ATMOSPHERE */}
+                    <div className="absolute inset-0 z-0">
+                        {/* Moving Pink Blobs (Liquid Silk Feel) */}
+                        <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-pink-200/50 rounded-full blur-[120px] animate-blob"></div>
+                        <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-rose-100/60 rounded-full blur-[120px] animate-blob delay-1000"></div>
+                        
+                        {/* Floating "Fluff" Particles */}
+                        {[...Array(15)].map((_, i) => (
+                            <div key={i} className="absolute animate-float-rise opacity-40 text-pink-400" style={{
+                                left: `${Math.random() * 100}%`,
+                                bottom: `-5%`,
+                                fontSize: `${Math.random() * 20 + 10}px`,
+                                animationDelay: `${Math.random() * 5}s`
+                            }}>☁️</div>
+                        ))}
+                    </div>
+
+                    {/* 2. THE ULTIMATE SNUGGLE ANIMATION */}
+                    <div className="relative z-10 w-full max-w-lg flex flex-col items-center">
+                        
+                        <div className="relative flex items-center justify-center mb-14 h-44 group">
+                            {/* The "Pile of Cuteness" */}
+                            <div className="relative flex items-center -space-x-12 animate-hug-wiggle">
+                                <span className="text-[110px] drop-shadow-2xl rotate-[-10deg] z-10">🐯</span>
+                                <div className="relative z-30 transform group-hover:scale-110 transition-transform duration-500">
+                                    <span className="text-[130px] drop-shadow-2xl">🧸</span>
+                                    <div className="absolute top-4 left-1/2 -translate-x-1/2 text-3xl animate-ping">💝</div>
+                                </div>
+                                <span className="text-[110px] drop-shadow-2xl rotate-[10deg] scale-x-[-1] z-10">🐱</span>
+                            </div>
+                            
+                            {/* Floating Heart Bubbles */}
+                            <div className="absolute inset-0 flex justify-center items-center">
+                                <div className="text-pink-500 text-3xl animate-pop-1 opacity-0">💕</div>
+                                <div className="text-pink-400 text-2xl animate-pop-2 opacity-0">💖</div>
+                            </div>
+                        </div>
+
+                        {/* 3. THE "PINK FROSTED" CARD */}
+                        <div className="relative w-full transition-transform duration-500 hover:scale-[1.01]">
+                            {/* Glowing Aura */}
+                            <div className="absolute -inset-1 bg-gradient-to-r from-pink-300 via-rose-200 to-pink-300 rounded-[50px] blur-lg opacity-40 animate-pulse"></div>
+                            
+                            <div className="relative bg-white/40 backdrop-blur-3xl border-2 border-white/60 rounded-[50px] p-8 md:p-12 shadow-[0_30px_60px_rgba(255,182,193,0.3)] text-center">
+                                
+                                {/* Image with a Soft "Teddy-Ear" Frame */}
+                                {data.image && (
+                                    <div className="relative w-40 h-40 mx-auto mb-10">
+                                        {/* Decorative Teddy Ears for the Photo */}
+                                        <div className="absolute -top-2 -left-2 w-12 h-12 bg-pink-100 rounded-full border-4 border-white"></div>
+                                        <div className="absolute -top-2 -right-2 w-12 h-12 bg-pink-100 rounded-full border-4 border-white"></div>
+                                        
+                                        <div className="relative w-full h-full rounded-[40px] border-4 border-white overflow-hidden shadow-md">
+                                            <img src={data.image} className="w-full h-full object-cover" alt="Us" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="space-y-6">
+                                    <div className="space-y-1">
+                                        <span className="text-pink-500 font-black tracking-[0.5em] text-[10px] uppercase opacity-60">The Cuddle Chapter</span>
+                                        <h1 className="font-serif text-5xl text-pink-600 font-black italic">Teddy Day</h1>
+                                    </div>
+
+                                    <div className="h-1 w-16 bg-gradient-to-r from-transparent via-pink-400 to-transparent mx-auto"></div>
+
+                                    <p className="font-hand text-4xl text-rose-900 leading-tight">
+                                        {data.message || "Sending you a hug so big it feels like a fluffy teddy bear!"}
+                                    </p>
+                                </div>
+
+                                {/* Bottom "Stitched" Decorative Line */}
+                                <div className="mt-10 flex justify-center gap-2">
+                                    {[...Array(8)].map((_, i) => (
+                                        <div key={i} className="w-4 h-1 bg-pink-200 rounded-full"></div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <style>{`
+                        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@1,900&display=swap');
+
+                        .font-hand { font-family: 'Dancing Script', cursive; }
+                        .font-serif { font-family: 'Playfair Display', serif; }
+
+                        @keyframes blob {
+                            0%, 100% { transform: translate(0, 0) scale(1); }
+                            50% { transform: translate(5%, 5%) scale(1.1); }
+                        }
+
+                        @keyframes float-rise {
+                            0% { transform: translateY(0) scale(1); opacity: 0; }
+                            50% { opacity: 0.4; }
+                            100% { transform: translateY(-100vh) scale(1.5); opacity: 0; }
+                        }
+
+                        @keyframes hug-wiggle {
+                            0%, 100% { transform: rotate(-2deg) scale(1); }
+                            50% { transform: rotate(2deg) scale(1.02); }
+                        }
+
+                        @keyframes pop-1 {
+                            0% { transform: translate(0,0) scale(0); opacity: 0; }
+                            50% { transform: translate(-40px, -60px) scale(1); opacity: 1; }
+                            100% { transform: translate(-50px, -100px) scale(0); opacity: 0; }
+                        }
+
+                        @keyframes pop-2 {
+                            0% { transform: translate(0,0) scale(0); opacity: 0; }
+                            50% { transform: translate(40px, -60px) scale(1); opacity: 1; }
+                            100% { transform: translate(50px, -100px) scale(0); opacity: 0; }
+                        }
+
+                        .animate-blob { animation: blob 10s ease-in-out infinite; }
+                        .animate-float-rise { animation: float-rise 8s linear infinite; }
+                        .animate-hug-wiggle { animation: hug-wiggle 4s ease-in-out infinite; }
+                        .animate-pop-1 { animation: pop-1 3s ease-out infinite; }
+                        .animate-pop-2 { animation: pop-2 3s ease-out infinite 1.5s; }
+                    `}</style>
+                </div>
+            );
+        };
+
+        const PromiseDay = ({ data }) => {
+    return (
+        <div className="min-h-screen bg-[#0f0511] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            
+            {/* 1. TWILIGHT GALAXY BACKGROUND */}
+            <div className="absolute inset-0 z-0">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#2a0d2e_0%,#0f0511_100%)]"></div>
+                
+                {/* Twinkling Stars */}
+                {[...Array(30)].map((_, i) => (
+                    <div key={i} className="absolute bg-white rounded-full animate-twinkle" style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        width: '2px', height: '2px',
+                        animationDelay: `${Math.random() * 5}s`
+                    }}></div>
+                ))}
+                
+                {/* Passing Shooting Star */}
+                <div className="absolute top-1/4 -left-10 w-24 h-px bg-gradient-to-r from-transparent via-pink-400 to-transparent rotate-[35deg] animate-shooting-star"></div>
+            </div>
+
+            {/* 2. THE PINKY SWEAR ANIMATION */}
+            <div className="relative z-10 w-full max-w-lg flex flex-col items-center">
+                
+                <div className="relative flex items-center justify-center mb-12 h-40">
+                    {/* Tiger & Cat meeting in the middle */}
+                    <div className="flex items-center -space-x-4">
+                        <div className="relative animate-lean-right">
+                            <span className="text-[100px] drop-shadow-[0_0_20px_rgba(255,100,200,0.3)]">🐯</span>
+                            <span className="absolute -right-2 top-1/2 text-4xl">🤙</span>
+                        </div>
+                        
+                        <div className="z-20 flex flex-col items-center pt-8">
+                            <div className="text-3xl animate-pulse-fast text-pink-500 mb-2">✨</div>
+                            <div className="h-12 w-px bg-gradient-to-b from-pink-500 to-transparent"></div>
+                        </div>
+
+                        <div className="relative animate-lean-left">
+                            <span className="text-[100px] drop-shadow-[0_0_20px_rgba(255,100,200,0.3)] scale-x-[-1]">🐱</span>
+                            <span className="absolute -left-2 top-1/2 text-4xl scale-x-[-1]">🤙</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. THE "GOLDEN VOW" CARD */}
+                <div className="relative w-full group">
+                    {/* Pink Glow behind the card */}
+                    <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 via-purple-500 to-pink-600 rounded-[40px] blur-xl opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+                    
+                    <div className="relative bg-[#1a0b1c]/80 backdrop-blur-3xl border border-pink-500/30 p-10 rounded-[40px] text-center shadow-2xl">
+                        
+                        {/* Memory Photo - Framed like a precious locket */}
+                        {data.image && (
+                            <div className="relative w-28 h-28 mx-auto mb-8">
+                                <div className="absolute inset-0 bg-pink-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
+                                <div className="relative w-full h-full rounded-full border-2 border-pink-400/50 p-1 overflow-hidden">
+                                    <img src={data.image} className="w-full h-full object-cover rounded-full" alt="The Promise" />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-4">
+                            <span className="text-pink-400 font-bold tracking-[0.5em] text-[10px] uppercase">February 11th • Forever</span>
+                            <h1 className="font-serif text-4xl md:text-5xl text-transparent bg-clip-text bg-gradient-to-b from-pink-100 to-pink-400 italic font-black">
+                                My Pinky Promise
+                            </h1>
+                            
+                            <div className="h-px w-20 bg-gradient-to-r from-transparent via-pink-500 to-transparent mx-auto"></div>
+
+                            <p className="font-hand text-3xl md:text-4xl text-pink-50/90 leading-relaxed shadow-text">
+                                "{data.message || "I promise to stay, to listen, and to love you more with every sunrise."}"
+                            </p>
+                        </div>
+
+                        {/* Symbolic "Infinity" Bottom Decoration */}
+                        <div className="mt-8 opacity-40">
+                            <span className="text-2xl text-pink-300">∞</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@1,900&display=swap');
+
+                .font-hand { font-family: 'Dancing Script', cursive; }
+                .font-serif { font-family: 'Playfair Display', serif; }
+
+                @keyframes shooting-star {
+                    0% { transform: translateX(0) translateY(0) opacity: 0; }
+                    10% { opacity: 1; }
+                    100% { transform: translateX(100vw) translateY(50vh) opacity: 0; }
+                }
+
+                @keyframes lean-right {
+                    0%, 100% { transform: rotate(0deg) translateX(0); }
+                    50% { transform: rotate(5deg) translateX(10px); }
+                }
+
+                @keyframes lean-left {
+                    0%, 100% { transform: rotate(0deg) translateX(0); }
+                    50% { transform: rotate(-5deg) translateX(-10px); }
+                }
+
+                @keyframes twinkle {
+                    0%, 100% { opacity: 0.3; transform: scale(1); }
+                    50% { opacity: 1; transform: scale(1.2); }
+                }
+
+                .animate-shooting-star { animation: shooting-star 5s linear infinite; animation-delay: 2s; }
+                .animate-lean-right { animation: lean-right 3s ease-in-out infinite; }
+                .animate-lean-left { animation: lean-left 3s ease-in-out infinite; }
+                .animate-twinkle { animation: twinkle 3s ease-in-out infinite; }
+                .animate-pulse-fast { animation: pulse 1.5s ease-in-out infinite; }
+
+                .shadow-text {
+                    text-shadow: 0 0 10px rgba(255, 100, 200, 0.5);
+                }
+            `}</style>
+        </div>
+    );
+};
+
+const HugDay = ({ data }) => {
+    const [isPulling, setIsPulling] = useState(false);
+    const [pullAmount, setPullAmount] = useState(0);
+    const [isTightHug, setIsTightHug] = useState(true);
+
+    const handlePull = (e) => {
+        const value = Math.abs(e.target.value);
+        setPullAmount(value);
+        setIsPulling(true);
+        setIsTightHug(false);
+    };
+
+    const releasePull = () => {
+        setIsPulling(false);
+        // Snaps back to 0 (The Hug)
+        setPullAmount(0);
+        setIsTightHug(true);
+        
+        // Trigger "Impact" effects
+        if (window.confetti) {
+            window.confetti({
+                particleCount: 80,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#ff0055', '#ffb7c5', '#ffffff']
+            });
+        }
+    };
+
+    return (
+        <div className={`min-h-screen transition-all duration-700 flex flex-col items-center justify-center p-6 relative overflow-hidden ${isTightHug ? 'bg-rose-50' : 'bg-white'}`}>
+            
+            {/* 1. DYNAMIC BACKGROUND LAYER */}
+            <div className="absolute inset-0 z-0">
+                {/* Intense Pink Aura that grows when hugged tight */}
+                <div className={`absolute inset-0 transition-opacity duration-1000 bg-[radial-gradient(circle_at_center,#fecdd3_0%,#fff1f2_100%)] ${isTightHug ? 'opacity-100' : 'opacity-0'}`}></div>
+                
+                {/* Floating Hearts that appear on Snap-back */}
+                {isTightHug && [...Array(15)].map((_, i) => (
+                    <div key={i} className="absolute animate-float-fast text-rose-400" style={{
+                        left: `${Math.random() * 100}%`,
+                        bottom: '0',
+                        animationDelay: `${Math.random() * 2}s`,
+                        fontSize: '30px'
+                    }}>❤️</div>
+                ))}
+            </div>
+
+            {/* 2. THE INTERACTIVE HUG STAGE */}
+            <div className={`relative z-10 w-full max-w-2xl flex flex-col items-center ${isTightHug && !isPulling ? 'animate-heartbeat' : ''}`}>
+                
+                <h1 className="font-serif text-4xl md:text-5xl text-rose-600 mb-12 italic text-center">
+                    {isTightHug ? "Never Letting Go..." : "They belong together!"}
+                </h1>
+
+                {/* THE EMOJIS */}
+                <div className="relative flex items-center justify-center w-full h-64">
+                    
+                    {/* Visual "Tension" Lines when pulling */}
+                    {isPulling && (
+                        <div className="absolute w-full flex justify-center items-center">
+                            <div className="h-1 bg-rose-200 animate-pulse" style={{ width: `${pullAmount * 4}px` }}></div>
+                        </div>
+                    )}
+
+                    {/* Tiger */}
+                    <div 
+                        className="relative transition-transform duration-150 ease-out"
+                        style={{ transform: `translateX(-${pullAmount}px) rotate(-${pullAmount/5}deg)` }}
+                    >
+                        <span className="text-[120px] md:text-[150px] filter drop-shadow-2xl">🐯</span>
+                    </div>
+
+                    {/* Cat */}
+                    <div 
+                        className="relative transition-transform duration-150 ease-out"
+                        style={{ transform: `translateX(${pullAmount}px) rotate(${pullAmount/5}deg) scaleX(-1)` }}
+                    >
+                        <span className="text-[120px] md:text-[150px] filter drop-shadow-2xl">🐱</span>
+                    </div>
+
+                    {/* The "TIGHT HUG" SHINE */}
+                    {isTightHug && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-40 h-40 bg-pink-400/20 rounded-full blur-3xl animate-ping"></div>
+                            <span className="text-6xl animate-bounce"></span>
+                        </div>
+                    )}
+                </div>
+
+                {/* THE "PULL" SLIDER */}
+                <div className="mt-16 w-full max-w-xs flex flex-col items-center gap-4">
+                    <p className="text-rose-400 font-bold uppercase tracking-widest text-xs">Try to pull them apart</p>
+                    <input 
+                        type="range"
+                        min="0"
+                        max="120"
+                        value={pullAmount}
+                        onChange={handlePull}
+                        onMouseUp={releasePull}
+                        onTouchEnd={releasePull}
+                        className="w-full h-2 bg-rose-200 rounded-full appearance-none cursor-grab active:cursor-grabbing accent-rose-600"
+                    />
+                </div>
+
+                {/* 3. THE REWARD MESSAGE */}
+                <div className={`mt-16 text-center transition-all duration-700 ${isTightHug ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+                    <div className="bg-white/60 backdrop-blur-lg border-2 border-rose-200 p-8 rounded-[40px] shadow-xl shadow-rose-200/50">
+                        <p className="font-hand text-4xl md:text-5xl text-rose-600 leading-tight">
+                            "{data.message || "No matter how hard the world pulls, I'll always hold you tighter."}"
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@1,900&display=swap');
+                .font-hand { font-family: 'Dancing Script', cursive; }
+                .font-serif { font-family: 'Playfair Display', serif; }
+
+                @keyframes heartbeat {
+                    0%, 100% { transform: scale(1); }
+                    10% { transform: scale(1.05); }
+                    20% { transform: scale(1); }
+                    30% { transform: scale(1.05); }
+                }
+
+                @keyframes float-fast {
+                    0% { transform: translateY(0) scale(0); opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { transform: translateY(-100vh) scale(1.5); opacity: 0; }
+                }
+
+                .animate-heartbeat { animation: heartbeat 2s ease-in-out infinite; }
+                .animate-float-fast { animation: float-fast 3s ease-out infinite; }
+
+                input[type='range']::-webkit-slider-thumb {
+                    appearance: none;
+                    width: 24px;
+                    height: 24px;
+                    background: white;
+                    border: 4px solid #e11d48;
+                    border-radius: 50%;
+                }
+            `}</style>
+        </div>
+    );
+};
+
+const KissDay = ({ data }) => {
+    const [offset, setOffset] = useState(0); // Tracks the drag/scroll
+    const [hasKissed, setHasKissed] = useState(false);
+
+    // Handles the movement logic
+    const handleSlider = (e) => {
+        if (hasKissed) return;
+        const value = parseInt(e.target.value);
+        setOffset(value);
+        
+        // When they are close enough (collision threshold)
+        if (value > 85) {
+            setHasKissed(true);
+            setOffset(100); // Snap to kiss
+            if (window.confetti) {
+                window.confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, colors: ['#ff0000', '#ff69b4'] });
+            }
+        }
+    };
+
+    return (
+        <div className={`min-h-screen transition-colors duration-1000 flex flex-col items-center justify-center p-6 relative overflow-hidden ${hasKissed ? 'bg-[#4e0505]' : 'bg-[#fff0f3]'}`}>
+            
+            {/* 1. BACKGROUND EFFECTS */}
+            <div className="absolute inset-0 z-0">
+                {hasKissed ? (
+                    // Passionate Red Effects
+                    <>
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#991b1b_0%,#4e0505_100%)] animate-pulse"></div>
+                        {[...Array(40)].map((_, i) => (
+                            <div key={i} className="absolute animate-float-up text-rose-400 opacity-40" style={{
+                                left: `${Math.random() * 100}%`,
+                                bottom: '-10%',
+                                animationDelay: `${Math.random() * 5}s`,
+                                fontSize: '24px'
+                            }}>❤️</div>
+                        ))}
+                    </>
+                ) : (
+                    // Innocent Pink Glitters
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#ffffff_0%,#fff0f3_100%)]">
+                         {[...Array(20)].map((_, i) => (
+                            <div key={i} className="absolute bg-pink-300 rounded-full animate-twinkle" style={{
+                                left: `${Math.random() * 100}%`,
+                                top: `${Math.random() * 100}%`,
+                                width: '4px', height: '4px'
+                            }}></div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* 2. THE INTERACTIVE STAGE */}
+            <div className="relative z-10 w-full max-w-xl flex flex-col items-center">
+                
+                <h1 className={`font-serif text-4xl md:text-6xl mb-16 italic transition-all duration-700 ${hasKissed ? 'text-white scale-110' : 'text-rose-400 opacity-60'}`}>
+                    {hasKissed ? "A Love Unstoppable" : "Bring Us Together..."}
+                </h1>
+
+                <div className="relative w-full h-40 flex items-center justify-between px-10">
+                    {/* TIGER (Fixed Left) */}
+                    <div className="text-[100px] md:text-[130px] z-10 filter drop-shadow-xl">
+                        🐯
+                    </div>
+
+                    {/* CAT (Moves based on slider) */}
+                    <div 
+                        className="text-[100px] md:text-[130px] z-20 filter drop-shadow-xl scale-x-[-1] transition-transform duration-100"
+                        style={{ transform: `translateX(-${offset * 2.5}px) scaleX(-1)` }}
+                    >
+                        🐱
+                    </div>
+
+                    {/* COLLISION EXPLOSION */}
+                    {hasKissed && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-9xl animate-ping-heart">💋</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* THE SLIDER CONTROL */}
+                {!hasKissed && (
+                    <div className="mt-20 w-full px-10 group">
+                        <input 
+                            type="range" 
+                            min="0" 
+                            max="100" 
+                            value={offset}
+                            onChange={handleSlider}
+                            className="w-full h-2 bg-pink-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                        />
+                        <p className="mt-4 font-hand text-xl text-rose-400 animate-pulse">Slide to Kiss...</p>
+                    </div>
+                )}
+
+                {/* 3. FINAL MESSAGE (Only appears after kiss) */}
+                <div className={`mt-12 text-center transition-all duration-1000 delay-500 ${hasKissed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+                    <p className="font-hand text-4xl md:text-6xl text-rose-100 italic px-6">
+                        "{data.message || "Everything changes when our lips touch."}"
+                    </p>
+                    
+                    <div className="mt-8 flex justify-center gap-4 text-white/40 text-xs tracking-widest uppercase">
+                        <span>Unlocked Heart</span>
+                        <div className="w-12 h-[1px] bg-white/40 self-center"></div>
+                        <span>Feb 13, 2026</span>
+                    </div>
+                </div>
+            </div>
+
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@1,900&display=swap');
+                .font-hand { font-family: 'Dancing Script', cursive; }
+                .font-serif { font-family: 'Playfair Display', serif; }
+
+                @keyframes float-up {
+                    0% { transform: translateY(0); opacity: 0; }
+                    50% { opacity: 0.6; }
+                    100% { transform: translateY(-100vh); opacity: 0; }
+                }
+
+                @keyframes ping-heart {
+                    0% { transform: scale(1); opacity: 1; }
+                    100% { transform: scale(4); opacity: 0; }
+                }
+
+                @keyframes twinkle {
+                    0%, 100% { opacity: 0.3; }
+                    50% { opacity: 1; }
+                }
+
+                .animate-float-up { animation: float-up 6s linear infinite; }
+                .animate-ping-heart { animation: ping-heart 1.5s ease-out infinite; }
+                .animate-twinkle { animation: twinkle 2s ease-in-out infinite; }
+
+                input[type='range']::-webkit-slider-thumb {
+                    appearance: none;
+                    width: 40px;
+                    height: 40px;
+                    background: #f43f5e;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    box-shadow: 0 0 15px rgba(244, 63, 94, 0.4);
+                    border: 3px solid white;
+                }
+            `}</style>
+        </div>
+    );
+};
+
+
+        // 8. Valentine's Day (Interactive Game)
+        const ValentineDay = ({ onAccept, sender }) => {
+    const [noBtnPos, setNoBtnPos] = useState({ top: '70%', left: '50%' });
+    const [yesSize, setYesSize] = useState(1);
+    const [accepted, setAccepted] = useState(false);
+
+    // The "Evasion" Logic - Moves button to a random spot on the screen
+    const moveNoButton = () => {
+        const padding = 100; // Keep away from extreme edges
+        const newTop = Math.random() * (window.innerHeight - padding);
+        const newLeft = Math.random() * (window.innerWidth - padding);
+        
+        setNoBtnPos({ top: `${newTop}px`, left: `${newLeft}px` });
+        setYesSize(prev => prev + 0.3); // Yes button grows as a reward for trying
+    };
+
+    const handleYes = () => {
+        setAccepted(true);
+        // Fireworks/Confetti Blast
+        const end = Date.now() + 5000;
+        const colors = ['#ff0000', '#ffd700', '#ffffff'];
+
+        (function frame() {
+            confetti({ particleCount: 10, angle: 60, spread: 55, origin: { x: 0 }, colors });
+            confetti({ particleCount: 10, angle: 120, spread: 55, origin: { x: 1 }, colors });
+            if (Date.now() < end) requestAnimationFrame(frame);
+        }());
+    };
+
+    if (accepted) {
+        return (
+            <div className="fixed inset-0 z-[100] bg-[#0d0106] flex items-center justify-center p-6 animate-fade-in">
+                {/* Celebration Background */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#4a051d_0%,#0d0106_100%)] opacity-50"></div>
+                <div className="absolute inset-0 overflow-hidden">
+                    {[...Array(30)].map((_, i) => (
+                        <div key={i} className="absolute animate-float-slow text-rose-500/20" style={{
+                            left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`, fontSize: '40px'
+                        }}>❤️</div>
+                    ))}
+                </div>
+
+                {/* THE SCREENSHOT CARD */}
+                <div className="relative z-10 bg-white/[0.03] backdrop-blur-3xl border-2 border-amber-300/30 p-10 rounded-[50px] text-center max-w-md shadow-[0_0_100px_rgba(251,191,36,0.2)]">
+                    <div className="text-7xl mb-6 animate-bounce">💍</div>
+                    <h1 className="font-serif text-5xl text-white mb-2 italic">Official: <span className="text-amber-300">Yes!</span></h1>
+                    <div className="h-px w-32 bg-amber-300/50 mx-auto mb-6"></div>
+                    
+                    <p className="font-hand text-3xl text-rose-100 mb-8 leading-relaxed">
+                        "Locked in forever. You are officially {sender}'s Valentine forever."
+                    </p>
+
+                    <div className="bg-amber-300/10 border border-amber-300/20 py-4 px-6 rounded-2xl mb-8">
+                        <p className="text-amber-200 text-sm font-bold tracking-widest uppercase mb-1">Action Required</p>
+                        <p className="text-white text-lg">📸 Take a screenshot & send it to {sender}!</p>
+                    </div>
+
+                    <div className="flex justify-center gap-4 text-4xl">
+                        <span>🐯</span>
+                        <span className="animate-pulse">💖</span>
+                        <span>🐱</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 bg-[#080105] flex flex-col items-center justify-center overflow-hidden">
+            
+            {/* Background Glitters */}
+            <div className="absolute inset-0 z-0">
+                {[...Array(40)].map((_, i) => (
+                    <div key={i} className="absolute bg-white rounded-full animate-twinkle shadow-[0_0_8px_#fff]" style={{
+                        left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`,
+                        width: '2px', height: '2px', animationDelay: `${Math.random() * 5}s`
+                    }}></div>
+                ))}
+            </div>
+
+            {/* MAIN STAGE */}
+            <div className="relative z-10 text-center px-6">
+                <div className="flex justify-center -space-x-12 mb-12 animate-float-slow">
+                    <span className="text-[140px] drop-shadow-[0_0_40px_rgba(251,191,36,0.4)]">🐯</span>
+                    <span className="text-[140px] drop-shadow-[0_0_40px_rgba(225,29,72,0.4)] scale-x-[-1]">🐱</span>
+                </div>
+
+                <h1 className="font-serif text-6xl md:text-8xl text-white italic mb-12 drop-shadow-2xl">
+                    Will you be <br/>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 via-amber-200 to-rose-400 animate-shimmer">My Valentine?</span>
+                </h1>
+
+                {/* YES BUTTON */}
+                <button 
+                    onClick={handleYes}
+                    style={{ transform: `scale(${yesSize})`, transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}
+                    className="relative z-30 bg-gradient-to-br from-rose-500 to-rose-700 text-white font-black py-6 px-16 rounded-full text-3xl shadow-[0_0_50px_rgba(225,29,72,0.5)] active:scale-95"
+                >
+                    YES! ❤️
+                </button>
+            </div>
+
+            {/* THE IMPOSSIBLE NO BUTTON */}
+            <button
+                onMouseEnter={moveNoButton}
+                onClick={moveNoButton}
+                style={{ 
+                    position: 'fixed',
+                    top: noBtnPos.top, 
+                    left: noBtnPos.left, 
+                    transition: 'all 0.1s ease-out', // Super fast evasion
+                    transform: 'translate(-50%, -50%)'
+                }}
+                className="bg-white/5 backdrop-blur-md text-white/30 font-bold py-3 px-8 rounded-full border border-white/10 z-20"
+            >
+                No 😢
+            </button>
+
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@1,900&display=swap');
+                .font-hand { font-family: 'Dancing Script', cursive; }
+                .font-serif { font-family: 'Playfair Display', serif; }
+
+                @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+                @keyframes float-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+                @keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+                
+                .animate-shimmer { background-size: 200% auto; animation: shimmer 5s linear infinite; }
+                .animate-float-slow { animation: float-slow 4s ease-in-out infinite; }
+                .animate-twinkle { animation: twinkle 3s ease-in-out infinite; }
+            `}</style>
+        </div>
+    );
+};
+
+        // --- Standard Render (Fallback for other days) ---
+        const StandardDay = ({ theme, data }) => (
+            <div className={`min-h-screen ${theme.bg} flex items-center justify-center p-6`}>
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+                    <div className="text-6xl mb-4">{theme.icon}</div>
+                    <h1 className={`font-serif text-4xl mb-6 ${theme.text}`}>{theme.name}</h1>
+                    {data.image && <img src={data.image} className="w-full h-56 object-cover rounded-lg mb-6 shadow-md" />}
+                    <p className="text-gray-600 text-lg font-hand text-2xl">"{data.message}"</p>
+                </div>
+            </div>
+        );
+
+        // --- APP CONTROLLER ---
+
+        const App = () => {
+            const [mode, setMode] = useState('loading'); // loading, landing, creator, viewer
+            const [data, setData] = useState(null);
+            const [viewDayId, setViewDayId] = useState(null);
+            const [audioTrigger, setAudioTrigger] = useState(false);
+
+            // Creator State
+            const [creatorData, setCreatorData] = useState({
+                sender: '',
+                recipient: '',
+                music: '',
+                days: Object.keys(THEMES).reduce((acc, key) => ({ ...acc, [key]: { message: '', image: '' } }), {})
+            });
+
+            useEffect(() => {
+                lucide.createIcons();
+                
+                const params = new URLSearchParams(window.location.search);
+                const encoded = params.get('gift');
+                
+                if (encoded) {
+                    try {
+                        const decoded = JSON.parse(atob(encoded));
+                        setData(decoded);
+                        setViewDayId(decoded.dayId);
+                        setMode('viewer_gate'); // Gate to force click for audio
+                    } catch (e) {
+                        setMode('landing');
+                    }
+                } else {
+                    setMode('landing');
+                }
+            }, []);
+
+            useEffect(() => { lucide.createIcons(); });
+
+            // Handlers
+            const updateDay = (dayKey, field, value) => {
+                setCreatorData(prev => ({
+                    ...prev,
+                    days: {
+                        ...prev.days,
+                        [dayKey]: { ...prev.days[dayKey], [field]: value }
+                    }
+                }));
+            };
+
+            const copyLink = (dayId) => {
+                const payload = {
+                    sender: creatorData.sender,
+                    recipient: creatorData.recipient,
+                    music: creatorData.music,
+                    dayId: dayId,
+                    dayData: creatorData.days[dayId]
+                };
+                const url = `${window.location.origin}${window.location.pathname}?gift=${btoa(JSON.stringify(payload))}`;
+                navigator.clipboard.writeText(url);
+                alert(`Link for ${THEMES[dayId].name} copied! Send this one today.`);
+            };
+
+            // --- VIEWS ---
+
+            if (mode === 'landing') {
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center relative overflow-hidden bg-[#fff5f7]">
+            
+            {/* 1. LAYERED MESH GRADIENT (The "Silk" Effect) */}
+            <div className="absolute inset-0 z-0">
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-pink-200/50 rounded-full blur-[120px] animate-blob"></div>
+                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-rose-200/50 rounded-full blur-[120px] animate-blob animation-delay-2000"></div>
+                
+                {/* 2. FLOATING DIAMOND DUST (Glitter) */}
+                {[...Array(30)].map((_, i) => (
+                    <div key={i} className="absolute bg-pink-400 rounded-full animate-twinkle opacity-20" style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        width: `${Math.random() * 4 + 2}px`,
+                        height: `${Math.random() * 4 + 2}px`,
+                        animationDelay: `${Math.random() * 5}s`
+                    }}></div>
+                ))}
+            </div>
+
+            {/* 3. MAIN CONTENT (Immersive & Floating) */}
+            <div className="relative z-10 max-w-4xl w-full flex flex-col items-center">
+                
+                {/* Floating Heart Emblem */}
+                <div className="relative mb-8 animate-float-slow">
+                    <div className="absolute inset-0 bg-pink-400 blur-3xl opacity-20 animate-pulse"></div>
+                    <div className="relative bg-white/80 backdrop-blur-md p-5 rounded-3xl border border-pink-100 shadow-xl">
+                        <span className="text-5xl">💝</span>
+                    </div>
+                </div>
+
+                {/* THE TYPOGRAPHY */}
+                <div className="space-y-6 text-center">
+                    <div className="inline-block px-6 py-2 bg-gradient-to-r from-pink-100 to-rose-100 text-pink-600 rounded-full text-xs font-black tracking-[0.4em] uppercase shadow-sm border border-white">
+                        Premium Edition 2026
+                    </div>
+                    
+                    <h1 className="font-serif text-7xl md:text-9xl text-gray-900 italic leading-[0.9] tracking-tighter">
+                        The <span className="text-transparent bg-clip-text bg-gradient-to-br from-pink-500 via-rose-600 to-pink-400 drop-shadow-sm">Valentine</span> <br/>
+                        Chronicles.
+                    </h1>
+
+                    <div className="flex items-center justify-center gap-4 py-4">
+                        <div className="h-px w-12 bg-pink-200"></div>
+                        <p className="font-hand text-3xl md:text-4xl text-rose-500/80">
+                            Eight days of pure magic
+                        </p>
+                        <div className="h-px w-12 bg-pink-200"></div>
+                    </div>
+                </div>
+
+                {/* THE INTERACTIVE START BUTTON */}
+                <div className="mt-12 group relative">
+                    {/* Outer Glow */}
+                    <div className="absolute -inset-1 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                    
+                    <button 
+                        onClick={() => setMode('creator')}
+                        className="relative bg-white text-pink-600 px-12 py-6 rounded-full text-2xl font-black shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-4 border border-pink-50"
+                    >
+                        Begin Your Story
+                        <div className="w-8 h-8 bg-pink-600 rounded-full flex items-center justify-center group-hover:rotate-[360deg] transition-transform duration-700">
+                            <i data-lucide="arrow-right" className="w-4 h-4 text-white"></i>
+                        </div>
+                    </button>
+                </div>
+
+                {/* Feature Icons (Minimalist) */}
+                <div className="mt-16 flex gap-10">
+                    {['sparkles', 'music', 'heart-handshake'].map((icon, idx) => (
+                        <div key={idx} className="flex flex-col items-center gap-2 opacity-30 hover:opacity-100 transition-opacity cursor-help">
+                            <i data-lucide={icon} className="w-6 h-6 text-pink-600"></i>
+                            <span className="text-[10px] uppercase font-bold tracking-widest text-pink-900">
+                                {icon.replace('-', ' ')}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@1,900&display=swap');
+                
+                .font-hand { font-family: 'Dancing Script', cursive; }
+                .font-serif { font-family: 'Playfair Display', serif; }
+
+                @keyframes blob {
+                    0%, 100% { transform: translate(0px, 0px) scale(1); }
+                    33% { transform: translate(30px, -50px) scale(1.1); }
+                    66% { transform: translate(-20px, 20px) scale(0.9); }
+                }
+
+                @keyframes twinkle {
+                    0%, 100% { opacity: 0.1; transform: scale(1); }
+                    50% { opacity: 0.5; transform: scale(1.5); }
+                }
+
+                @keyframes float-slow {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-15px); }
+                }
+
+                .animate-blob { animation: blob 7s infinite; }
+                .animate-twinkle { animation: twinkle 4s ease-in-out infinite; }
+                .animate-float-slow { animation: float-slow 5s ease-in-out infinite; }
+            `}</style>
+        </div>
+    );
+}
+
+            if (mode === 'creator') {
+                return (
+                    <div className="min-h-screen bg-[#fdfcfd] pb-24">
+                        {/* Premium Sticky Header */}
+                        <header className="bg-white/80 backdrop-blur-md p-5 shadow-sm sticky top-0 z-50 border-b border-pink-50">
+                            <div className="max-w-5xl mx-auto flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-pink-100 p-2 rounded-xl text-pink-600">
+                                        <i data-lucide="pen-tool" className="w-6 h-6"></i>
+                                    </div>
+                                    <h2 className="font-serif text-2xl text-gray-800 font-bold tracking-tight">Creator <span className="text-pink-600">Studio</span></h2>
+                                </div>
+                                <button 
+                                    onClick={() => setMode('landing')} 
+                                    className="px-5 py-2 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-2 font-medium"
+                                >
+                                    <i data-lucide="arrow-left" className="w-4 h-4"></i> Back to Home
+                                </button>
+                            </div>
+                        </header>
+
+                        <div className="max-w-4xl mx-auto p-6 mt-8 space-y-10">
+                            
+                            {/* Section 1: Identity & Music */}
+                            <div className="bg-white p-8 rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100">
+                                <div className="flex items-center gap-3 mb-8">
+                                    <span className="bg-pink-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">1</span>
+                                    <h3 className="text-xl font-bold text-gray-800">The Essentials</h3>
+                                </div>
+                                
+                                <div className="grid md:grid-cols-2 gap-8">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-500 uppercase tracking-wider ml-1">Your Name</label>
+                                        <input 
+                                            placeholder="Enter sender name" 
+                                            className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-pink-300 transition-all text-gray-700" 
+                                            onChange={e => setCreatorData({...creatorData, sender: e.target.value})} 
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-500 uppercase tracking-wider ml-1">Partner's Name</label>
+                                        <input 
+                                            placeholder="Enter recipient name" 
+                                            className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-pink-300 transition-all text-gray-700" 
+                                            onChange={e => setCreatorData({...creatorData, recipient: e.target.value})} 
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2 space-y-2">
+                                        <label className="text-sm font-bold text-gray-500 uppercase tracking-wider ml-1 flex items-center gap-2">
+                                            <i data-lucide="youtube" className="w-4 h-4 text-red-500"></i> Background Music (YouTube ID)
+                                        </label>
+                                        <div className="relative">
+                                            <input 
+                                                placeholder="e.g. dQw4w9WgXcQ" 
+                                                className="w-full p-4 pl-12 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-pink-300 transition-all font-mono text-pink-600" 
+                                                onChange={e => setCreatorData({...creatorData, music: e.target.value})} 
+                                            />
+                                            <i data-lucide="music" className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Section 2: The Journey */}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <span className="bg-pink-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">2</span>
+                                    <h3 className="text-xl font-bold text-gray-800">Customize the 8 Days</h3>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-6">
+                                    {Object.values(THEMES).map(theme => (
+                                        <div key={theme.id} className="group bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 hover:border-pink-200 transition-all hover:shadow-md">
+                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-14 h-14 bg-pink-50 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                                                        {theme.icon}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-xl text-gray-800">{theme.name}</h4>
+                                                        <p className="text-sm text-gray-400">February {theme.id === 'rose' ? '7' : theme.id === 'propose' ? '8' : '...'}</p>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={() => copyLink(theme.id)}
+                                                    className="bg-gray-900 text-white px-6 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-pink-600 transition-colors shadow-lg shadow-gray-200"
+                                                >
+                                                    <i data-lucide="copy" className="w-4 h-4"></i> Get Day {theme.id} Link
+                                                </button>
+                                            </div>
+                                            
+                                            <div className="grid md:grid-cols-2 gap-4">
+                                                <textarea 
+                                                    placeholder={`Enter a romantic message for ${theme.name}...`}
+                                                    className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-pink-200 outline-none text-gray-700 resize-none"
+                                                    rows="3"
+                                                    onChange={e => updateDay(theme.id, 'message', e.target.value)}
+                                                ></textarea>
+                                                <div className="space-y-3">
+                                                    <div className="relative">
+                                                        <input 
+                                                            placeholder="Paste Image URL (Instagram, Pinterest, etc.)"
+                                                            className="w-full p-4 pl-12 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-pink-200 text-sm"
+                                                            onChange={e => updateDay(theme.id, 'image', e.target.value)}
+                                                        />
+                                                        <i data-lucide="image" className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5"></i>
+                                                    </div>
+                                                    <div className="p-3 bg-pink-50 rounded-xl text-[10px] text-pink-400 flex items-center gap-2">
+                                                        <i data-lucide="info" className="w-3 h-3"></i>
+                                                        Make sure it's a direct image link ending in .jpg or .png
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Float Action: Final Share (Optional) */}
+                        <div className="fixed bottom-8 inset-x-0 flex justify-center z-40 pointer-events-none">
+                            <div className="pointer-events-auto bg-white/90 backdrop-blur px-8 py-4 rounded-full shadow-2xl border border-pink-100 flex items-center gap-6 animate-fade-in-up">
+                                <p className="text-sm font-medium text-gray-600">Ready to share?</p>
+                                <button onClick={() => alert('Links generated for each card above!')} className="bg-pink-600 text-white px-6 py-2 rounded-full font-bold hover:bg-pink-700 transition-colors">
+                                    Preview All Cards
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (mode === 'viewer_gate') {
+    // Cinematic Deep Space Palettes
+    const cosmicThemes = [
+        'bg-[#0a0105]', // Midnight Rose
+        'bg-[#02010a]', // Deep Space Violet
+        'bg-[#0f0505]'  // Dark Velvet Red
+    ];
+    const randomBg = cosmicThemes[Math.floor(Math.random() * cosmicThemes.length)];
+
+    return (
+        <div 
+            className={`min-h-screen ${randomBg} flex flex-col items-center justify-center text-white relative overflow-hidden cursor-pointer`}
+            onClick={() => { setAudioTrigger(true); setMode('viewer_active'); }}
+        >
+            {/* 1. THE INFINITE DEPTH PARTICLES */}
+            <div className="absolute inset-0 pointer-events-none">
+                {[...Array(40)].map((_, i) => (
+                    <div 
+                        key={i} 
+                        className="absolute animate-depth-float opacity-0"
+                        style={{
+                            left: `${Math.random() * 100}%`,
+                            top: `${Math.random() * 100}%`,
+                            fontSize: `${Math.random() * 20 + 10}px`,
+                            animationDuration: `${8 + Math.random() * 12}s`,
+                            animationDelay: `${Math.random() * 5}s`,
+                            color: i % 2 === 0 ? '#fb7185' : '#fcd34d'
+                        }}
+                    >
+                        {['✨', '🌸', '💖', '💎'][Math.floor(Math.random() * 4)]}
+                    </div>
+                ))}
+            </div>
+
+            {/* 2. THE MAGICAL AURA (CENTRAL GLOW) */}
+            <div className="absolute w-[150%] h-[60%] bg-rose-600/10 rounded-[100%] blur-[120px] rotate-12 animate-pulse"></div>
+
+            {/* 3. THE IMMERSIVE CONTENT (No Box/Banner) */}
+            <div className="relative z-10 flex flex-col items-center max-w-lg px-6">
+                
+                {/* Floating "Key" Icon */}
+                <div className="relative mb-16">
+                    <div className="absolute inset-0 bg-white rounded-full blur-3xl opacity-20 animate-ping"></div>
+                    <div className="relative w-24 h-24 flex items-center justify-center bg-gradient-to-tr from-rose-500 to-amber-400 rounded-full shadow-[0_0_50px_rgba(244,63,94,0.5)]">
+                        <span className="text-5xl animate-gift-wiggle">🎁</span>
+                    </div>
+                </div>
+
+                {/* Typography with Perspective */}
+                <div className="text-center space-y-6">
+                    <h2 className="text-rose-400 font-black tracking-[0.8em] uppercase text-[10px] animate-fade-in">
+                        Incoming Transmission
+                    </h2>
+                    
+                    <h1 className="font-serif text-6xl md:text-8xl italic text-white leading-tight">
+                        A Gift <br/>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-200 via-white to-rose-200 animate-shimmer">
+                            of Light.
+                        </span>
+                    </h1>
+
+                    <div className="flex flex-col items-center gap-4 py-8">
+                        <div className="h-20 w-px bg-gradient-to-b from-rose-500 to-transparent"></div>
+                        <p className="font-hand text-3xl text-white/80">
+                            For {data.recipient}
+                        </p>
+                    </div>
+                </div>
+
+                {/* THE "TAP TO ENTER" VIBRATION */}
+                <div className="mt-10 group relative">
+                    <div className="absolute -inset-4 bg-white/5 rounded-full blur-xl group-hover:bg-rose-500/20 transition-all duration-500"></div>
+                    <button className="relative flex flex-col items-center gap-2">
+                        <span className="text-sm font-bold tracking-widest text-rose-300 uppercase group-hover:text-white transition-colors">
+                            Touch to Reveal
+                        </span>
+                        <div className="flex gap-1">
+                            <span className="w-1 h-1 bg-white rounded-full animate-bounce"></span>
+                            <span className="w-1 h-1 bg-white rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                            <span className="w-1 h-1 bg-white rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            {/* SOUND REMINDER */}
+            <div className="absolute bottom-10 flex items-center gap-2 text-white/30 text-[10px] tracking-widest uppercase font-bold">
+                <span>Enable Music</span>
+                <div className="w-4 h-[1px] bg-white/30"></div>
+                <span>Slide 01</span>
+            </div>
+
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@1,900&display=swap');
+
+                .font-hand { font-family: 'Dancing Script', cursive; }
+                .font-serif { font-family: 'Playfair Display', serif; }
+
+                @keyframes depth-float {
+                    0% { transform: translateZ(-100px) scale(0.5); opacity: 0; }
+                    20% { opacity: 0.6; }
+                    100% { transform: translateZ(500px) scale(2) translateY(-200px); opacity: 0; }
+                }
+
+                @keyframes shimmer {
+                    0% { background-position: -200% center; }
+                    100% { background-position: 200% center; }
+                }
+
+                @keyframes gift-wiggle {
+                    0%, 100% { transform: rotate(-5deg) scale(1); }
+                    50% { transform: rotate(5deg) scale(1.1); }
+                }
+
+                .animate-depth-float {
+                    animation: depth-float linear infinite;
+                }
+
+                .animate-shimmer {
+                    background-size: 200% auto;
+                    animation: shimmer 5s linear infinite;
+                }
+
+                .animate-gift-wiggle {
+                    animation: gift-wiggle 3s ease-in-out infinite;
+                }
+            `}</style>
+        </div>
+    );
+}
+
+            if (mode === 'viewer_active') {
+                const dayData = data.dayData;
+                const theme = THEMES[viewDayId];
+
+                return (
+                    <>
+                        <MusicPlayer videoId={data.music} playTrigger={audioTrigger} />
+                        
+                        {/* Updated Logic with specific Day Components */}
+                        {viewDayId === 'rose' && <RoseDay data={dayData} />}
+                        {viewDayId === 'propose' && <ProposeDay data={dayData} />}
+                        {viewDayId === 'chocolate' && <ChocolateDay data={dayData} />}
+                        {viewDayId === 'teddy' && <TeddyDay data={dayData} />}
+                        {viewDayId === 'promise' && <PromiseDay data={dayData} />}
+                        {viewDayId === 'hug' && <HugDay data={dayData} />}
+                        {viewDayId === 'kiss' && <KissDay data={dayData} />}
+                        {viewDayId === 'valentine' && <ValentineDay data={dayData} />}
+                    </>
+                );
+            }
+
+            return null;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
